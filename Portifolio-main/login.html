@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <style>
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #4b6cb7, #182848);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #fff;
+      font-family: "Poppins", sans-serif;
+    }
+    .container {
+      max-width: 400px;
+      width: 100%;
+      padding: 20px;
+    }
+    .card {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 30px 25px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      animation: fadeIn 0.8s ease-in-out;
+    }
+    .card h1 {
+      font-size: 1.8rem;
+      text-align: center;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    .card p {
+      text-align: center;
+      font-size: 0.9rem;
+      margin-bottom: 25px;
+      color: #cfd8dc;
+    }
+    .input-group {
+      margin-bottom: 18px;
+      display: flex;
+      flex-direction: column;
+    }
+    .input-group label {
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    .input-group input {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      transition: all 0.3s;
+    }
+    .input-group input:focus {
+      background: #f1f1f1;
+      color: #333;
+      box-shadow: 0 0 0 2px #4b6cb7;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #00bfa6;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+    .btn:hover {
+      background: #00a58e;
+      transform: translateY(-2px);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px);}
+      to { opacity: 1; transform: translateY(0);}
+    }
+    @media (max-width: 480px) {
+      .card { padding: 25px 15px;}
+      .card h1 { font-size: 1.5rem;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Login</h1>
+      <p>Entre com seu e-mail e senha:</p>
+      <form id="loginForm" autocomplete="off">
+        <div class="input-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" placeholder="Seu e-mail" required />
+        </div>
+        <div class="input-group">
+          <label for="password">Senha</label>
+          <input type="password" id="password" placeholder="Sua senha" required />
+        </div>
+        <button type="submit" class="btn">Entrar</button>
+      </form>
+    </div>
+  </div>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <!-- Configuração do Firebase -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCpHJoTlbi1P_z-C9cxptXk6Lcfv2yAI",
+      authDomain: "sla157.firebaseapp.com",
+      databaseURL: "https://sla157-default-rtdb.firebaseio.com",
+      projectId: "sla157",
+      storageBucket: "sla157.appspot.com",
+      messagingSenderId: "1038690976877",
+      appId: "1:1038690976877:web:02445ee0abf9f64613e444"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
+  <script src="login.js"></script>
+</body>
+</html>

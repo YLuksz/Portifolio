@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadastro de Empregador</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1dd1a1 0%, #00d2d3 50%, #17a2b8 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #1dd1a1, #00d2d3, #17a2b8);
+      border-radius: 24px 24px 0 0;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      text-align: center;
+    }
+
+    p {
+      color: #6c757d;
+      font-size: 16px;
+      font-weight: 400;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .input-group {
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid #e9ecef;
+      border-radius: 16px;
+      font-size: 16px;
+      background: #ffffff;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #00d2d3;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 210, 211, 0.15);
+    }
+
+    input::placeholder {
+      color: #adb5bd;
+      transition: opacity 0.3s ease;
+    }
+
+    input:focus::placeholder {
+      opacity: 0.7;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #1dd1a1 0%, #00d2d3 100%);
+      border: none;
+      border-radius: 16px;
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-top: 10px;
+      position: relative;
+      overflow: hidden;
+      opacity: 0.7;
+    }
+
+    .btn:hover {
+      opacity: 1;
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    @media (max-width: 480px) {
+      .card {
+        padding: 30px 24px;
+        margin: 10px;
+        border-radius: 20px;
+        max-width: 100%;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      input, .btn {
+        padding: 14px 18px;
+        font-size: 16px;
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
+    }
+
+    /* Input animation effects */
+    input:focus {
+      animation: inputPulse 0.6s ease-out;
+    }
+
+    @keyframes inputPulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 210, 211, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 210, 211, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 210, 211, 0); }
+    }
+
+    /* Button ripple effect */
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .btn:active::before {
+      width: 300px;
+      height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Cadastro de Empregador</h1>
+      <p>Preencha os dados abaixo para criar sua conta de empregador:</p>
+      <form id="registerEmployerForm" autocomplete="off">
+        <div class="input-group">
+          <label for="companyName">Nome da Empresa</label>
+          <input type="text" id="companyName" placeholder="Nome da empresa" required />
+        </div>
+        <div class="input-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" placeholder="empresa@email.com" required />
+        </div>
+        <div class="input-group">
+          <label for="cnpj">CNPJ</label>
+          <input type="text" id="cnpj" placeholder="00.000.000/0000-00" maxlength="18" required />
+        </div>
+        <div class="input-group">
+          <label for="password">Senha</label>
+          <input type="password" id="password" placeholder="Digite sua senha" required />
+        </div>
+        <div class="input-group">
+          <label for="confirmPassword">Confirmar Senha</label>
+          <input type="password" id="confirmPassword" placeholder="Repita a senha" required />
+        </div>
+        <button type="submit" class="btn">Cadastrar</button>
+      </form>
+    </div>
+  </div>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <!-- Configuração do Firebase -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCpHJoTlbi1P_z-C9cxptXk6Lcfv2yAI",
+      authDomain: "sla157.firebaseapp.com",
+      databaseURL: "https://sla157-default-rtdb.firebaseio.com",
+      projectId: "sla157",
+      storageBucket: "sla157.appspot.com",
+      messagingSenderId: "1038690976877",
+      appId: "1:1038690976877:web:02445ee0abf9f64613e444"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
+  <script src="cadastro_empregador.js"></script>
+</body>
+</html>
