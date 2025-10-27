@@ -7,6 +7,17 @@ const cpf = document.getElementById('cpf');
 const password = document.getElementById('password');
 const confirmPassword = document.getElementById('confirmPassword');
 
+// helper: salva informação de login com tipo de conta
+function saveLoginInfo(emailValue, type, extra = {}) {
+  const login = {
+    email: emailValue,
+    accountType: type,
+    createdAt: Date.now(),
+    ...extra
+  };
+  return db.ref('users').push(login);
+}
+
 form.addEventListener('submit', (e) => {
   e.preventDefault();
 
@@ -25,12 +36,18 @@ form.addEventListener('submit', (e) => {
     email: email.value,
     username: username.value,
     cpf: cpf.value,
-    senha: password.value
+    senha: password.value,
+    accountType: 'candidato' // adiciona o tipo de conta
   };
 
-  // Envia para o Firebase
+  // Envia para o Firebase e cria entrada de login
   db.ref('candidatos').push(candidato)
+    .then((ref) => {
+      return saveLoginInfo(candidato.email, candidato.accountType, { candidatoRef: ref.key });
+    })
     .then(() => {
+      try { localStorage.setItem('accountType', 'candidato'); } catch {}
+      try { localStorage.setItem('user', JSON.stringify({ email: candidato.email, username: candidato.username })); } catch {}
       alert('Cadastro realizado com sucesso!');
       // Redireciona para a home
       window.location.href = 'home.html';
