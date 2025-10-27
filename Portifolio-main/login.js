@@ -36,6 +36,8 @@ form.addEventListener('submit', async (e) => {
   // Tenta login como candidato
   const candidato = await checkLogin('candidatos');
   if (candidato) {
+    try { localStorage.setItem('accountType', 'candidato'); } catch {}
+    try { localStorage.setItem('user', JSON.stringify({ email: candidato.email, username: candidato.username })); } catch {}
     alert('Login realizado como candidato!');
     window.location.href = 'home.html';
     return;
@@ -44,6 +46,8 @@ form.addEventListener('submit', async (e) => {
   // Tenta login como empregador
   const empregador = await checkLogin('empregadores');
   if (empregador) {
+    try { localStorage.setItem('accountType', 'empregador'); } catch {}
+    try { localStorage.setItem('user', JSON.stringify({ email: empregador.email, companyName: empregador.companyName })); } catch {}
     alert('Login realizado como empregador!');
     window.location.href = 'home.html';
     return;

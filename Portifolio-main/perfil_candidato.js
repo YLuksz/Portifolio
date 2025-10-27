@@ -11,7 +11,7 @@
 const STORAGE_KEY = 'perfil_candidato_v1';
 const AUTO_SAVE_DEBOUNCE = 600;
 
-// Utilitários
+// Utilitários 
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 const el = (tag, attrs = {}, ...children) => {
@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindUI();
     loadProfile();
     observeInputsForAutosave();
+    renderProfile(); // Adicionado para renderizar perfil na inicialização
 });
 
 // Bind de elementos e eventos com IDs esperados no HTML.
@@ -138,6 +139,24 @@ function bindUI() {
     if (addExpBtn) addExpBtn.addEventListener('click', e => {
         e.preventDefault(); addExperience();
     });
+
+    // Personalização rápida
+    const customizeBtn = $('.customize-btn');
+    if (customizeBtn) {
+        customizeBtn.addEventListener('click', () => {
+            const data = getProfileData();
+            const nome = prompt('Nome do usuário:', data.nome || '');
+            if (nome === null) return;
+            const funcao = prompt('Função:', data.funcao || '');
+            if (funcao === null) return;
+            const contato = prompt('Formas de contato:', data.contato || '');
+            if (contato === null) return;
+            const newData = { ...data, nome, funcao, contato };
+            saveProfileData(newData);
+            renderProfile();
+            alert('Perfil atualizado!');
+        });
+    }
 }
 
 // Observa inputs textareas/selects para salvar automaticamente (debounced)
@@ -449,3 +468,126 @@ function validateProfile() {
     }
     return true;
 }
+
+// === Firebase integração ===
+// Requer que o Firebase já esteja inicializado no HTML
+function getFirebaseRef() {
+    if (typeof db === 'undefined') return null;
+    if (!state.email) return null;
+    // Chaveia pelo e-mail (ajuste para sua estrutura se necessário)
+    return db.ref('candidatos').orderByChild('email').equalTo(state.email);
+}
+
+// Salva no Firebase
+function saveProfileToFirebase() {
+    if (typeof db === 'undefined') return;
+    collectFromDOM();
+    if (!state.email) {
+        alert('Preencha o e-mail para salvar no banco!');
+        return;
+    }
+    // Busca o nó do candidato pelo e-mail
+    db.ref('candidatos').orderByChild('email').equalTo(state.email).once('value').then(snapshot => {
+        let updated = false;
+        snapshot.forEach(child => {
+            child.ref.update(state);
+            updated = true;
+        });
+        if (!updated) {
+            // Se não existe, cria novo
+            db.ref('candidatos').push(state);
+        }
+        alert('Perfil salvo no banco de dados!');
+    }).catch(err => {
+        alert('Erro ao salvar no banco: ' + err.message);
+    });
+}
+
+// Carrega do Firebase (se existir)
+function loadProfileFromFirebase() {
+    if (typeof db === 'undefined') return;
+    if (!state.email) return;
+    db.ref('candidatos').orderByChild('email').equalTo(state.email).once('value').then(snapshot => {
+        let found = false;
+        snapshot.forEach(child => {
+            Object.assign(state, child.val());
+            found = true;
+        });
+        if (found) {
+            renderAll();
+        }
+    });
+}
+
+// Altera o botão Salvar para também salvar no Firebase
+const oldSaveProfile = saveProfile;
+function saveProfile(showAlert = false) {
+    oldSaveProfile(showAlert);
+    saveProfileToFirebase();
+}
+
+// Permite carregar do Firebase ao digitar e-mail
+const emailInput = document.getElementById('email');
+if (emailInput) {
+    emailInput.addEventListener('blur', function() {
+        state.email = emailInput.value.trim();
+        if (state.email) loadProfileFromFirebase();
+    });
+}
+
+// Personalização rápida
+document.addEventListener('DOMContentLoaded', function() {
+  const userNameEl = document.querySelector('.user-name');
+  const userRoleEl = document.querySelector('.user-role');
+  const contactInfoEl = document.querySelector('.contact-info');
+  const customizeBtn = document.querySelector('.customize-btn');
+
+  function getProfileData() {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      const profile = JSON.parse(localStorage.getItem('candidateProfile') || '{}');
+      return { ...user, ...profile };
+    } catch {
+      return {};
+    }
+  }
+
+  function saveProfileData(data) {
+    try {
+      localStorage.setItem('candidateProfile', JSON.stringify(data));
+    } catch {}
+    // Salva no Firebase se disponível
+    if (window.db && data.email) {
+      db.ref('candidatos').orderByChild('email').equalTo(data.email).once('value').then(snapshot => {
+        let updated = false;
+        snapshot.forEach(child => { child.ref.update(data); updated = true; });
+        if (!updated) db.ref('candidatos').push(data);
+      });
+    }
+  }
+
+  function renderProfile() {
+    const data = getProfileData();
+    if (userNameEl) userNameEl.textContent = data.nome || 'Nome do usuário';
+    if (userRoleEl) userRoleEl.textContent = data.funcao || 'Função';
+    if (contactInfoEl) contactInfoEl.textContent = data.contato || 'Formas de Contato';
+  }
+
+  if (customizeBtn) {
+    customizeBtn.addEventListener('click', () => {
+      const data = getProfileData();
+      const nome = prompt('Nome do usuário:', data.nome || '');
+      if (nome === null) return;
+      const funcao = prompt('Função:', data.funcao || '');
+      if (funcao === null) return;
+      const contato = prompt('Formas de contato:', data.contato || '');
+      if (contato === null) return;
+      const newData = { ...data, nome, funcao, contato };
+      saveProfileData(newData);
+      renderProfile();
+      alert('Perfil atualizado!');
+    });
+  }
+
+  renderProfile();
+});
