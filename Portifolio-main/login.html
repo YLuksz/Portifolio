@@ -4,87 +4,217 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login</title>
-  <style>
-    body {
-      min-height: 100vh;
-      background: linear-gradient(135deg, #4b6cb7, #182848);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      color: #fff;
-      font-family: "Poppins", sans-serif;
+    <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    .container {
-      max-width: 400px;
-      width: 100%;
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1dd1a1 0%, #00d2d3 50%, #17a2b8 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
-    .card {
-      background: rgba(255,255,255,0.12);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
-      padding: 30px 25px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      animation: fadeIn 0.8s ease-in-out;
-    }
-    .card h1 {
-      font-size: 1.8rem;
-      text-align: center;
-      margin-bottom: 10px;
-      color: #fff;
-    }
-    .card p {
-      text-align: center;
-      font-size: 0.9rem;
-      margin-bottom: 25px;
-      color: #cfd8dc;
-    }
-    .input-group {
-      margin-bottom: 18px;
+
+    .container {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
     }
-    .input-group label {
+
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #1dd1a1, #00d2d3, #17a2b8);
+      border-radius: 24px 24px 0 0;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      text-align: center;
+    }
+
+    p {
+      color: #6c757d;
+      font-size: 16px;
+      font-weight: 400;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .input-group {
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
       font-weight: 500;
-      margin-bottom: 6px;
-    }
-    .input-group input {
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: none;
-      outline: none;
-      font-size: 1rem;
-      transition: all 0.3s;
-    }
-    .input-group input:focus {
-      background: #f1f1f1;
       color: #333;
-      box-shadow: 0 0 0 2px #4b6cb7;
     }
+
+    input {
+      width: 100%;
+      padding: 16px 20px;
+      border: 2px solid #e9ecef;
+      border-radius: 16px;
+      font-size: 16px;
+      background: #ffffff;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #00d2d3;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 210, 211, 0.15);
+    }
+
+    input::placeholder {
+      color: #adb5bd;
+      transition: opacity 0.3s ease;
+    }
+
+    input:focus::placeholder {
+      opacity: 0.7;
+    }
+
     .btn {
       width: 100%;
-      padding: 12px;
-      background: #00bfa6;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #1dd1a1 0%, #00d2d3 100%);
       border: none;
-      border-radius: 8px;
-      font-size: 1rem;
-      color: #fff;
-      font-weight: bold;
+      border-radius: 16px;
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
       cursor: pointer;
-      transition: 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-top: 10px;
+      position: relative;
+      overflow: hidden;
+      opacity: 0.7;
     }
+
     .btn:hover {
-      background: #00a58e;
-      transform: translateY(-2px);
+      opacity: 1;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px);}
-      to { opacity: 1; transform: translateY(0);}
+
+    .btn:active {
+      transform: translateY(0);
     }
+
     @media (max-width: 480px) {
-      .card { padding: 25px 15px;}
-      .card h1 { font-size: 1.5rem;}
+      .card {
+        padding: 30px 24px;
+        margin: 10px;
+        border-radius: 20px;
+        max-width: 100%;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      input, .btn {
+        padding: 14px 18px;
+        font-size: 16px;
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
     }
+
+    /* Input animation effects */
+    input:focus {
+      animation: inputPulse 0.6s ease-out;
+    }
+
+    @keyframes inputPulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 210, 211, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(0, 210, 211, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 210, 211, 0); }
+    }
+
+    /* Button ripple effect */
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .btn:active::before {
+      width: 300px;
+      height: 300px;
+    }
+    .create-account {
+          text-align: center;
+          color: #00d2d3;
+          font-size: 15px;
+          text-decoration: none;
+          font-weight: 500;
+          transition: all 0.3s ease;
+          display: inline-block;
+          position: relative;
+      }
+
+      .create-account:hover {
+          color: #1dd1a1;
+          transform: translateY(-1px);
+      }
+
+      .create-account::after {
+          content: '';
+          position: absolute;
+          width: 0;
+          height: 2px;
+          bottom: -4px;
+          left: 50%;
+          background: linear-gradient(135deg, #1dd1a1, #00d2d3);
+          transition: all 0.3s ease;
+          transform: translateX(-50%);
+      }
+
+      .create-account:hover::after {
+          width: 100%;
+      }
+
   </style>
 </head>
 <body>
@@ -101,6 +231,10 @@
           <label for="password">Senha</label>
           <input type="password" id="password" placeholder="Sua senha" required />
         </div>
+          <div style="text-align: center;">
+          <a href="#" class="create-account">Criar conta</a>
+        </div>
+
         <button type="submit" class="btn">Entrar</button>
       </form>
     </div>

@@ -298,7 +298,7 @@
         </div>
 
         <div class="profile-options">
-            <div class="profile-card" data-profile="employer">
+            <div class="profile-card" data-profile="empregador">
                 <div class="profile-icon employer-icon">
                     👔
                 </div>
@@ -308,7 +308,7 @@
                 </div>
             </div>
 
-            <div class="profile-card" data-profile="candidate">
+            <div class="profile-card" data-profile="candidato">
                 <div class="profile-icon candidate-icon">
                     👨‍💼
                 </div>
@@ -324,88 +324,6 @@
         </button>
     </div>
 
-    <script>
-        let selectedProfile = null;
-        const profileCards = document.querySelectorAll('.profile-card');
-        const continueButton = document.getElementById('continueBtn');
-
-        profileCards.forEach(card => {
-            card.addEventListener('click', function() {
-                // Remove seleção anterior
-                profileCards.forEach(c => c.classList.remove('selected'));
-                
-                // Adiciona seleção atual
-                this.classList.add('selected');
-                selectedProfile = this.dataset.profile;
-                
-                // Ativa o botão continuar
-                continueButton.classList.add('active');
-                
-                // Adiciona feedback visual
-                this.style.transform = 'translateY(-4px) scale(1.02)';
-                setTimeout(() => {
-                    this.style.transform = 'translateY(-2px) scale(1)';
-                }, 150);
-            });
-
-            // Efeitos de hover suaves
-            card.addEventListener('mouseenter', function() {
-                if (!this.classList.contains('selected')) {
-                    this.style.transform = 'translateY(-4px)';
-                }
-            });
-
-            card.addEventListener('mouseleave', function() {
-                if (!this.classList.contains('selected')) {
-                    this.style.transform = 'translateY(0)';
-                }
-            });
-        });
-
-        continueButton.addEventListener('click', function() {
-            if (selectedProfile) {
-                // Feedback visual
-                const originalText = this.textContent;
-                this.textContent = 'REDIRECIONANDO...';
-                this.style.background = 'linear-gradient(135deg, #17a2b8 0%, #1dd1a1 100%)';
-                
-                setTimeout(() => {
-                    if (selectedProfile === 'employer') {
-                        alert('Redirecionando para área do Empregador...');
-                    } else {
-                        alert('Redirecionando para área do Candidato...');
-                    }
-                    
-                    this.textContent = originalText;
-                    this.style.background = 'linear-gradient(135deg, #1dd1a1 0%, #00d2d3 100%)';
-                }, 1500);
-            }
-        });
-
-        // Efeito suave nas formas flutuantes
-        document.querySelectorAll('.floating-shape').forEach(shape => {
-            shape.addEventListener('mouseover', function() {
-                this.style.transform = 'scale(1.2)';
-                this.style.transition = 'transform 0.3s ease';
-            });
-
-            shape.addEventListener('mouseout', function() {
-                this.style.transform = 'scale(1)';
-            });
-        });
-
-        // Animação de entrada
-        window.addEventListener('load', function() {
-            const container = document.querySelector('.selection-container');
-            container.style.opacity = '0';
-            container.style.transform = 'translateY(20px)';
-            
-            setTimeout(() => {
-                container.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-                container.style.opacity = '1';
-                container.style.transform = 'translateY(0)';
-            }, 100);
-        });
-    </script>
+    <script src="seletor.js"></script>
 </body>
 </html>

@@ -1,6 +1,13 @@
 const form = document.getElementById('loginForm');
 const email = document.getElementById('email');
 const password = document.getElementById('password');
+const createAccountLink = document.querySelector('.create-account');
+
+// Adiciona evento de clique no link "Criar conta"
+createAccountLink.addEventListener('click', (e) => {
+  e.preventDefault();
+  window.location.href = 'seletor.html';
+});
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -26,7 +33,6 @@ form.addEventListener('submit', async (e) => {
         return user;
       });
   }
-
   // Tenta login como candidato
   const candidato = await checkLogin('candidatos');
   if (candidato) {
@@ -42,6 +48,6 @@ form.addEventListener('submit', async (e) => {
     window.location.href = 'home.html';
     return;
   }
-
+  
   alert('E-mail ou senha inválidos.');
 });

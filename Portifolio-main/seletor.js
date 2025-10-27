@@ -13,10 +13,12 @@ function selectProfile(profile) {
 
   // Marca o card atual
   const selectedCard = document.querySelector(`[data-profile="${profile}"]`);
-  if (selectedCard) selectedCard.classList.add('selected');
+  if (selectedCard) {
+    selectedCard.classList.add('selected');
+  }
 
   // Ativa o botão continuar
-  continueButton.disabled = false;
+  continueButton.classList.add('active');
 }
 
 // Adiciona evento de clique em cada card
@@ -25,15 +27,8 @@ profileCards.forEach(card => {
     const profile = card.dataset.profile; // "candidato" ou "empregador"
     selectProfile(profile);
 
-    // Armazena a escolha
-    localStorage.setItem('perfilSelecionado', profile);
-
-    // Redireciona para a página correspondente
-    if (profile === 'candidato') {
-      window.location.href = 'cadastro_candidato.html';
-    } else if (profile === 'empregador') {
-      window.location.href = 'cadastro_empregador.html';
-    }
+    // Atualiza o visual do botão
+    continueButton.classList.add('active');
   });
 });
 
@@ -44,8 +39,15 @@ continueButton.addEventListener('click', () => {
     return;
   }
 
+  // Armazena a escolha
   localStorage.setItem('perfilSelecionado', selectedProfile);
-  window.location.href = 'cadastro_empregador.html';
+
+  // Redireciona para a página correspondente
+  if (selectedProfile === 'candidato') {
+    window.location.href = 'cadastro_candidato.html';
+  } else if (selectedProfile === 'empregador') {
+    window.location.href = 'cadastro_empregador.html';
+  }
 });
 
 // (Opcional) — ao carregar a página, verifica se já existe uma escolha anterior
