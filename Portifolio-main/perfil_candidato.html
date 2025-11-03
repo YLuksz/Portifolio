@@ -133,6 +133,12 @@
             <div class="meta-note" id="metaNote">Clique em "Costumizar" para editar esta seção.</div>
         </div>
     </main>
+    
+    <!-- Firebase SDK (compatível com a versão usada em outros arquivos) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- arquivo local com config (já existe no projeto) -->
+    <script src="firebase.js"></script>
 
     <script>
         // chaves e textos padrão
@@ -157,6 +163,21 @@
 
         function storageKey(k) { return `perfil_candidato_${k}`; }
 
+        // ID persistente do usuário (gera uma única vez e salva em localStorage)
+        function getOrCreateUserId() {
+            let id = localStorage.getItem('pf_user_id');
+            if (!id) {
+                id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+                localStorage.setItem('pf_user_id', id);
+            }
+            return id;
+        }
+
+        // chave base para gravar no Realtime DB usando um id persistente
+        function dbKey() {
+            return 'perfil_candidato/' + getOrCreateUserId();
+        }
+
         function loadProfileInfo() {
             // tenta usar localStorage.user (salvo no cadastro) ou chaves individuais
             const userRaw = localStorage.getItem('user');
@@ -179,20 +200,54 @@
         }
 
         function loadContent(key) {
-            const stored = localStorage.getItem(storageKey(key));
-            textarea.value = stored !== null ? stored : (defaults[key] || '');
-            textarea.scrollTop = 0;
-            textarea.setAttribute('readonly', ''); // sempre carregar como readonly
-            editing = false;
-            customizeBtn.textContent = 'Costumizar';
-            metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
-            // ensure profile inputs also reset to readonly
-            nameInput.setAttribute('readonly', '');
-            emailInput.setAttribute('readonly', '');
+            // tenta carregar do Realtime DB primeiro, depois fallback para localStorage/defaults
+            try {
+                const path = dbKey() + '/sections/' + key;
+                db.ref(path).once('value').then(snap => {
+                    const val = snap.val();
+                    if (val && typeof val.text === 'string') {
+                        textarea.value = val.text;
+                    } else {
+                        const stored = localStorage.getItem(storageKey(key));
+                        textarea.value = stored !== null ? stored : (defaults[key] || '');
+                    }
+                    textarea.scrollTop = 0;
+                }).catch(() => {
+                    const stored = localStorage.getItem(storageKey(key));
+                    textarea.value = stored !== null ? stored : (defaults[key] || '');
+                    textarea.scrollTop = 0;
+                }).finally(() => {
+                    textarea.setAttribute('readonly', ''); // sempre carregar como readonly
+                    editing = false;
+                    customizeBtn.textContent = 'Costumizar';
+                    metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
+                    // ensure profile inputs also reset to readonly
+                    nameInput.setAttribute('readonly', '');
+                    emailInput.setAttribute('readonly', '');
+                });
+            } catch (e) {
+                const stored = localStorage.getItem(storageKey(key));
+                textarea.value = stored !== null ? stored : (defaults[key] || '');
+                textarea.scrollTop = 0;
+                textarea.setAttribute('readonly', ''); // sempre carregar como readonly
+                editing = false;
+                customizeBtn.textContent = 'Costumizar';
+                metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
+                // ensure profile inputs also reset to readonly
+                nameInput.setAttribute('readonly', '');
+                emailInput.setAttribute('readonly', '');
+            }
         }
 
         function saveContent(key) {
             localStorage.setItem(storageKey(key), textarea.value);
+            // grava também no Realtime DB
+            try {
+                const path = dbKey() + '/sections/' + key;
+                db.ref(path).set({ text: textarea.value, updatedAt: Date.now() });
+            } catch (e) {
+                console.warn('Não foi possível salvar no Firebase:', e);
+            }
         }
 
         function saveProfileInfo() {
@@ -206,6 +261,13 @@
                 localStorage.setItem('user', JSON.stringify(existing));
             } catch {
                 localStorage.setItem('user', JSON.stringify({ username: nameInput.value, email: emailInput.value }));
+            }
+            // grava perfil no Firebase
+            try {
+                const path = dbKey() + '/profile';
+                db.ref(path).set({ name: nameInput.value, email: emailInput.value, updatedAt: Date.now() });
+            } catch (e) {
+                console.warn('Não foi possível salvar perfil no Firebase:', e);
             }
         }
 

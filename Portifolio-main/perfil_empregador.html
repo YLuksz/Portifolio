@@ -120,6 +120,12 @@
         </div>
     </main>
 
+    <!-- Firebase SDK (compatível com a versão usada em outros arquivos) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <!-- arquivo local com config (já existe no projeto) -->
+    <script src="firebase.js"></script>
+
     <script>
         // textos padrão por aba
         const defaults = {
@@ -142,6 +148,21 @@
 
         function storageKey(k) { return `perfil_empregador_${k}`; }
 
+        // ID persistente do usuário/empresa (gera uma única vez e salva em localStorage)
+        function getOrCreateUserId() {
+            let id = localStorage.getItem('pf_user_id');
+            if (!id) {
+                id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+                localStorage.setItem('pf_user_id', id);
+            }
+            return id;
+        }
+
+        // gera uma chave segura para usar no Realtime DB baseada no id persistente
+        function dbKey() {
+            return 'perfil_empregador/' + getOrCreateUserId();
+        }
+
         function loadProfileInfo() {
             const userRaw = localStorage.getItem('user');
             if (userRaw) {
@@ -162,19 +183,53 @@
         }
 
         function loadContent(key) {
-            const stored = localStorage.getItem(storageKey(key));
-            textarea.value = stored !== null ? stored : (defaults[key] || '');
-            textarea.scrollTop = 0;
-            textarea.setAttribute('readonly', '');
-            editing = false;
-            customizeBtn.textContent = 'Costumizar';
-            metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
-            companyNameInput.setAttribute('readonly', '');
-            emailInput.setAttribute('readonly', '');
+            // primeiro tenta carregar do Realtime DB (por empresa/email)
+            try {
+                const path = dbKey() + '/sections/' + key;
+                db.ref(path).once('value').then(snap => {
+                    const val = snap.val();
+                    if (val && typeof val.text === 'string') {
+                        textarea.value = val.text;
+                    } else {
+                        const stored = localStorage.getItem(storageKey(key));
+                        textarea.value = stored !== null ? stored : (defaults[key] || '');
+                    }
+                    textarea.scrollTop = 0;
+                }).catch(() => {
+                    // se falhar (ex: offline), usa localStorage/defaults
+                    const stored = localStorage.getItem(storageKey(key));
+                    textarea.value = stored !== null ? stored : (defaults[key] || '');
+                    textarea.scrollTop = 0;
+                }).finally(() => {
+                    textarea.setAttribute('readonly', '');
+                    editing = false;
+                    customizeBtn.textContent = 'Costumizar';
+                    metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
+                    companyNameInput.setAttribute('readonly', '');
+                    emailInput.setAttribute('readonly', '');
+                });
+            } catch (e) {
+                const stored = localStorage.getItem(storageKey(key));
+                textarea.value = stored !== null ? stored : (defaults[key] || '');
+                textarea.scrollTop = 0;
+                textarea.setAttribute('readonly', '');
+                editing = false;
+                customizeBtn.textContent = 'Costumizar';
+                metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
+                companyNameInput.setAttribute('readonly', '');
+                emailInput.setAttribute('readonly', '');
+            }
         }
 
         function saveContent(key) {
             localStorage.setItem(storageKey(key), textarea.value);
+            // grava também no Realtime DB
+            try {
+                const path = dbKey() + '/sections/' + key;
+                db.ref(path).set({ text: textarea.value, updatedAt: Date.now() });
+            } catch (e) {
+                console.warn('Não foi possível salvar no Firebase:', e);
+            }
         }
 
         function saveProfileInfo() {
@@ -187,6 +242,13 @@
                 localStorage.setItem('user', JSON.stringify(existing));
             } catch {
                 localStorage.setItem('user', JSON.stringify({ companyName: companyNameInput.value, email: emailInput.value }));
+            }
+            // grava perfil no Firebase
+            try {
+                const path = dbKey() + '/profile';
+                db.ref(path).set({ companyName: companyNameInput.value, email: emailInput.value, updatedAt: Date.now() });
+            } catch (e) {
+                console.warn('Não foi possível salvar perfil no Firebase:', e);
             }
         }
 
