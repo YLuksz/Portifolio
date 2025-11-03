@@ -178,25 +178,46 @@
             return 'perfil_candidato/' + getOrCreateCandidateId();
         }
 
+        // carrega infos do perfil e tenta resolver um id existente pelo e-mail no DB
         function loadProfileInfo() {
-            // tenta usar localStorage.user (salvo no cadastro) ou chaves individuais
-            const userRaw = localStorage.getItem('user');
-            if (userRaw) {
-                try {
-                    const u = JSON.parse(userRaw);
-                    nameInput.value = u.username || u.name || u.companyName || '';
-                    emailInput.value = u.email || '';
-                } catch {
-                    nameInput.value = '';
-                    emailInput.value = '';
+            return new Promise((resolve) => {
+                // tenta usar localStorage.user (salvo no cadastro) ou chaves individuais
+                const userRaw = localStorage.getItem('user');
+                if (userRaw) {
+                    try {
+                        const u = JSON.parse(userRaw);
+                        nameInput.value = u.username || u.name || u.companyName || '';
+                        emailInput.value = u.email || '';
+                    } catch {
+                        nameInput.value = '';
+                        emailInput.value = '';
+                    }
+                } else {
+                    nameInput.value = localStorage.getItem(storageKey('nome')) || 'Nome do usuário';
+                    emailInput.value = localStorage.getItem(storageKey('email')) || 'contato@exemplo.com';
                 }
-            } else {
-                nameInput.value = localStorage.getItem(storageKey('nome')) || 'Nome do usuário';
-                emailInput.value = localStorage.getItem(storageKey('email')) || 'contato@exemplo.com';
-            }
-            // keep inputs readonly by default
-            nameInput.setAttribute('readonly', '');
-            emailInput.setAttribute('readonly', '');
+
+                // keep inputs readonly by default
+                nameInput.setAttribute('readonly', '');
+                emailInput.setAttribute('readonly', '');
+
+                // se temos um e-mail, checamos no DB se existe mapeamento para um id
+                const email = (emailInput.value || '').trim();
+                if (email && typeof db !== 'undefined') {
+                    const mapPath = 'users_by_email/' + encodeURIComponent(email);
+                    db.ref(mapPath).once('value').then(snap => {
+                        const mapped = snap.val();
+                        if (mapped) {
+                            // sincroniza o id local para que o carregamento use o mesmo nó
+                            localStorage.setItem('pf_candidate_id', mapped);
+                        }
+                    }).catch(() => {
+                        // ignore errors — fallback continuará usando local id
+                    }).finally(() => resolve());
+                } else {
+                    resolve();
+                }
+            });
         }
 
         function loadContent(key) {
@@ -266,14 +287,23 @@
             try {
                 const path = dbKey() + '/profile';
                 db.ref(path).set({ name: nameInput.value, email: emailInput.value, updatedAt: Date.now() });
+                // também grava um mapeamento email -> candidate id para facilitar login em outros dispositivos
+                try {
+                    const email = (emailInput.value || '').trim();
+                    if (email) {
+                        const mapPath = 'users_by_email/' + encodeURIComponent(email);
+                        db.ref(mapPath).set(getOrCreateCandidateId());
+                    }
+                } catch (e) {
+                    /* ignore */
+                }
             } catch (e) {
                 console.warn('Não foi possível salvar perfil no Firebase:', e);
             }
         }
 
-        // inicializa conteúdo e infos
-        loadProfileInfo();
-        loadContent(currentKey);
+    // inicializa conteúdo e infos (aguarda resolução do possível mapeamento por e-mail)
+    loadProfileInfo().then(() => loadContent(currentKey));
 
         // tab click
         tabs.forEach(tab => {
