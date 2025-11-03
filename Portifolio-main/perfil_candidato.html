@@ -163,19 +163,19 @@
 
         function storageKey(k) { return `perfil_candidato_${k}`; }
 
-        // ID persistente do usuário (gera uma única vez e salva em localStorage)
-        function getOrCreateUserId() {
-            let id = localStorage.getItem('pf_user_id');
+        // ID persistente do CANDIDATO (gera uma única vez e salva em localStorage)
+        function getOrCreateCandidateId() {
+            let id = localStorage.getItem('pf_candidate_id');
             if (!id) {
-                id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
-                localStorage.setItem('pf_user_id', id);
+                id = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+                localStorage.setItem('pf_candidate_id', id);
             }
             return id;
         }
 
-        // chave base para gravar no Realtime DB usando um id persistente
+        // chave base para gravar no Realtime DB usando id do candidato
         function dbKey() {
-            return 'perfil_candidato/' + getOrCreateUserId();
+            return 'perfil_candidato/' + getOrCreateCandidateId();
         }
 
         function loadProfileInfo() {

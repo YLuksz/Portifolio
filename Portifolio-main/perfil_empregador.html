@@ -148,19 +148,19 @@
 
         function storageKey(k) { return `perfil_empregador_${k}`; }
 
-        // ID persistente do usuário/empresa (gera uma única vez e salva em localStorage)
-        function getOrCreateUserId() {
-            let id = localStorage.getItem('pf_user_id');
+        // ID persistente do EMPREGADOR (gera uma única vez e salva em localStorage)
+        function getOrCreateEmployerId() {
+            let id = localStorage.getItem('pf_employer_id');
             if (!id) {
-                id = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
-                localStorage.setItem('pf_user_id', id);
+                id = 'e_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+                localStorage.setItem('pf_employer_id', id);
             }
             return id;
         }
 
-        // gera uma chave segura para usar no Realtime DB baseada no id persistente
+        // gera uma chave segura para usar no Realtime DB baseada no id do empregador
         function dbKey() {
-            return 'perfil_empregador/' + getOrCreateUserId();
+            return 'perfil_empregador/' + getOrCreateEmployerId();
         }
 
         function loadProfileInfo() {
