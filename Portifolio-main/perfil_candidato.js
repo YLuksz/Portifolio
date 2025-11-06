@@ -46,9 +46,41 @@ let saveTimeout = null;
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
     bindUI();
+    // carrega dados locais primeiro
     loadProfile();
     observeInputsForAutosave();
-    renderProfile(); // Adicionado para renderizar perfil na inicialização
+
+    // tenta obter e-mail do usuário salvo (localStorage.user ou chaves conhecidas)
+    function getSavedUserEmail() {
+        try {
+            const raw = localStorage.getItem('user');
+            if (raw) {
+                const u = JSON.parse(raw);
+                if (u.email) return u.email;
+                // às vezes o campo pode estar em outra chave
+                if (u.username && u.username.includes('@')) return u.username;
+            }
+        } catch {}
+        // fallback para chaves alternativas
+        return localStorage.getItem('email') || localStorage.getItem('userEmail') || '';
+    }
+
+    // se houver e-mail e o Firebase estiver disponível, tenta puxar o perfil do DB
+    (async () => {
+        const email = getSavedUserEmail();
+        if (email && typeof db !== 'undefined') {
+            state.email = email;
+            try {
+                await loadProfileFromFirebase(); // [`loadProfileFromFirebase`](perfil_candidato.js)
+                // persiste a versão carregada do DB localmente
+                saveProfile(false);
+            } catch (err) {
+                console.warn('Erro ao carregar do Firebase, usando local:', err);
+            }
+        }
+        // render final (garante exibição)
+        renderAll();
+    })();
 });
 
 // Bind de elementos e eventos com IDs esperados no HTML.
@@ -536,58 +568,3 @@ if (emailInput) {
 }
 
 // Personalização rápida
-document.addEventListener('DOMContentLoaded', function() {
-  const userNameEl = document.querySelector('.user-name');
-  const userRoleEl = document.querySelector('.user-role');
-  const contactInfoEl = document.querySelector('.contact-info');
-  const customizeBtn = document.querySelector('.customize-btn');
-
-  function getProfileData() {
-    try {
-      const user = JSON.parse(localStorage.getItem('user'));
-      const profile = JSON.parse(localStorage.getItem('candidateProfile') || '{}');
-      return { ...user, ...profile };
-    } catch {
-      return {};
-    }
-  }
-
-  function saveProfileData(data) {
-    try {
-      localStorage.setItem('candidateProfile', JSON.stringify(data));
-    } catch {}
-    // Salva no Firebase se disponível
-    if (window.db && data.email) {
-      db.ref('candidatos').orderByChild('email').equalTo(data.email).once('value').then(snapshot => {
-        let updated = false;
-        snapshot.forEach(child => { child.ref.update(data); updated = true; });
-        if (!updated) db.ref('candidatos').push(data);
-      });
-    }
-  }
-
-  function renderProfile() {
-    const data = getProfileData();
-    if (userNameEl) userNameEl.textContent = data.nome || 'Nome do usuário';
-    if (userRoleEl) userRoleEl.textContent = data.funcao || 'Função';
-    if (contactInfoEl) contactInfoEl.textContent = data.contato || 'Formas de Contato';
-  }
-
-  if (customizeBtn) {
-    customizeBtn.addEventListener('click', () => {
-      const data = getProfileData();
-      const nome = prompt('Nome do usuário:', data.nome || '');
-      if (nome === null) return;
-      const funcao = prompt('Função:', data.funcao || '');
-      if (funcao === null) return;
-      const contato = prompt('Formas de contato:', data.contato || '');
-      if (contato === null) return;
-      const newData = { ...data, nome, funcao, contato };
-      saveProfileData(newData);
-      renderProfile();
-      alert('Perfil atualizado!');
-    });
-  }
-
-  renderProfile();
-});
