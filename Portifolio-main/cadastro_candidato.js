@@ -43,6 +43,11 @@ form.addEventListener('submit', (e) => {
   // Envia para o Firebase e cria entrada de login
   db.ref('candidatos').push(candidato)
     .then((ref) => {
+      // salva mapeamento email -> candidatoId para permitir carregamento em outros dispositivos
+      try {
+        const mapPath = 'users_by_email/' + encodeURIComponent(candidato.email);
+        db.ref(mapPath).set(ref.key);
+      } catch (e) { console.warn('Não foi possível gravar users_by_email:', e); }
       return saveLoginInfo(candidato.email, candidato.accountType, { candidatoRef: ref.key });
     })
     .then(() => {

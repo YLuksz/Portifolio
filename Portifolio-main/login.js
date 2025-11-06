@@ -24,20 +24,23 @@ form.addEventListener('submit', async (e) => {
       .equalTo(email.value)
       .once('value')
       .then(snapshot => {
-        let user = null;
+        let found = null;
         snapshot.forEach(child => {
-          if (child.val().senha === password.value) {
-            user = child.val();
+          const val = child.val();
+          if (val.senha === password.value) {
+            found = { key: child.key, val };
           }
         });
-        return user;
+        return found;
       });
   }
   // Tenta login como candidato
   const candidato = await checkLogin('candidatos');
   if (candidato) {
     try { localStorage.setItem('accountType', 'candidato'); } catch {}
-    try { localStorage.setItem('user', JSON.stringify({ email: candidato.email, username: candidato.username })); } catch {}
+    try { localStorage.setItem('user', JSON.stringify({ email: candidato.val.email, username: candidato.val.username })); } catch {}
+    // salva id do perfil para permitir que perfil_candidato carregue do nó correto imediatamente
+    try { localStorage.setItem('pf_candidate_id', candidato.key); } catch {}
     alert('Login realizado como candidato!');
     window.location.href = 'home.html';
     return;
@@ -47,7 +50,8 @@ form.addEventListener('submit', async (e) => {
   const empregador = await checkLogin('empregadores');
   if (empregador) {
     try { localStorage.setItem('accountType', 'empregador'); } catch {}
-    try { localStorage.setItem('user', JSON.stringify({ email: empregador.email, companyName: empregador.companyName })); } catch {}
+    try { localStorage.setItem('user', JSON.stringify({ email: empregador.val.email, companyName: empregador.val.companyName })); } catch {}
+    try { localStorage.setItem('pf_employer_id', empregador.key); } catch {}
     alert('Login realizado como empregador!');
     window.location.href = 'home.html';
     return;

@@ -41,7 +41,11 @@ form.addEventListener('submit', (e) => {
   // grava dados do empregador e depois cria entrada de login com accountType
   db.ref('empregadores').push(empregador)
     .then((ref) => {
-      // opcional: referenciar o cadastro específico no nó de login
+      // salva mapeamento email -> empregadorId para permitir carregamento em outros dispositivos
+      try {
+        const mapPath = 'users_by_email/' + encodeURIComponent(empregador.email);
+        db.ref(mapPath).set(ref.key);
+      } catch (e) { console.warn('Não foi possível gravar users_by_email:', e); }
       return saveLoginInfo(empregador.email, empregador.accountType, { empregadorRef: ref.key });
     })
     .then(() => {
