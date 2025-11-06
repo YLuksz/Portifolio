@@ -123,214 +123,264 @@
     <!-- Firebase SDK (compatível com a versão usada em outros arquivos) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <!-- arquivo local com config (já existe no projeto) -->
     <script src="firebase.js"></script>
 
     <script>
-        // textos padrão por aba
-        const defaults = {
-            sobre_empresa: "Descreva sua empresa: missão, valores e atuação...",
-            vagas: "Liste as vagas abertas e requisitos (título, local, tipo, descrição)...",
-            equipe: "Apresente sua equipe e cargos principais...",
-            contatos: "Endereço, telefone, site e redes sociais da empresa...",
-            historia: "Breve história da empresa, marcos e prêmios..."
-        };
+        (function(){
+            const db = (typeof firebase !== 'undefined' && firebase.database) ? firebase.database() : undefined;
 
-        const tabs = document.querySelectorAll('.nav-tab');
-        const textarea = document.getElementById('contentText');
-        const customizeBtn = document.getElementById('customizeBtn');
-        const metaNote = document.getElementById('metaNote');
-        const companyNameInput = document.getElementById('companyNameInput');
-        const emailInput = document.getElementById('emailInput');
+            const defaults = {
+                sobre_empresa: "Descreva sua empresa: missão, valores e atuação...",
+                vagas: "Liste as vagas abertas e requisitos (título, local, tipo, descrição)...",
+                equipe: "Apresente sua equipe e cargos principais...",
+                contatos: "Endereço, telefone, site e redes sociais da empresa...",
+                historia: "Breve história da empresa, marcos e prêmios..."
+            };
 
-        let currentKey = document.querySelector('.nav-tab.active').dataset.key;
-        let editing = false;
+            const tabs = Array.from(document.querySelectorAll('.nav-tab'));
+            const textarea = document.getElementById('contentText');
+            const customizeBtn = document.getElementById('customizeBtn');
+            const metaNote = document.getElementById('metaNote');
+            const companyNameInput = document.getElementById('companyNameInput');
+            const emailInput = document.getElementById('emailInput');
 
-        function storageKey(k) { return `perfil_empregador_${k}`; }
+            let currentKey = document.querySelector('.nav-tab.active').dataset.key || 'sobre_empresa';
+            let editing = false;
 
-        // ID persistente do EMPREGADOR (gera uma única vez e salva em localStorage)
-        function getOrCreateEmployerId() {
-            let id = localStorage.getItem('pf_employer_id');
-            if (!id) {
-                id = 'e_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
-                localStorage.setItem('pf_employer_id', id);
+            function storageKey(k) { return `perfil_empregador_${k}`; }
+            function localUser(){ try{return JSON.parse(localStorage.getItem('user')||'{}')}catch{return{}} }
+            function normalizeEmail(e){ return String(e||'').trim().toLowerCase(); }
+
+            function getOrCreateEmployerId(){
+                let id = localStorage.getItem('pf_employer_id');
+                if(!id){
+                    id = 'e_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+                    localStorage.setItem('pf_employer_id', id);
+                }
+                return id;
             }
-            return id;
-        }
 
-        // gera uma chave segura para usar no Realtime DB baseada no id do empregador
-        function dbKey() {
-            return 'perfil_empregador/' + getOrCreateEmployerId();
-        }
+            async function resolveIdByEmail(email){
+                if(!email || !db) return null;
+                const e = normalizeEmail(email);
+                try{
+                    const mapSnap = await db.ref('users_by_email/' + encodeURIComponent(e)).once('value');
+                    const mapped = mapSnap.val();
+                    if(mapped) return mapped;
+                }catch(err){ /* ignore */ }
+                try{
+                    // procura no nó empregadores
+                    const snap = await db.ref('empregadores').orderByChild('email').equalTo(email).once('value');
+                    let key = null;
+                    snap.forEach(child => { key = child.key; });
+                    if(key) return key;
+                }catch(err){ /* ignore */ }
+                return null;
+            }
 
-        // carrega infos do perfil e tenta resolver um id existente pelo e-mail no DB
-        function loadProfileInfo() {
-            return new Promise((resolve) => {
-                const userRaw = localStorage.getItem('user');
-                if (userRaw) {
-                    try {
-                        const u = JSON.parse(userRaw);
-                        companyNameInput.value = u.companyName || u.username || localStorage.getItem(storageKey('companyName')) || 'Nome da empresa';
-                        emailInput.value = u.email || localStorage.getItem(storageKey('email')) || 'email@empresa.com';
-                    } catch {
-                        companyNameInput.value = localStorage.getItem(storageKey('companyName')) || 'Nome da empresa';
-                        emailInput.value = localStorage.getItem(storageKey('email')) || 'email@empresa.com';
-                    }
-                } else {
-                    companyNameInput.value = localStorage.getItem(storageKey('companyName')) || 'Nome da empresa';
-                    emailInput.value = localStorage.getItem(storageKey('email')) || 'email@empresa.com';
-                }
-                companyNameInput.setAttribute('readonly', '');
-                emailInput.setAttribute('readonly', '');
+            function dbKey(){
+                const id = localStorage.getItem('pf_employer_id') || getOrCreateEmployerId();
+                return 'perfil_empregador/' + id;
+            }
 
-                const email = (emailInput.value || '').trim();
-                if (email && typeof db !== 'undefined') {
-                    const mapPath = 'users_by_email/' + encodeURIComponent(email);
-                    db.ref(mapPath).once('value').then(snap => {
-                        const mapped = snap.val();
-                        if (mapped) {
-                            localStorage.setItem('pf_employer_id', mapped);
+            // --- carregamento do perfil: prioriza DB ---
+            async function loadProfileInfo(){
+                // inicialmente coloca placeholders (não sobrescreverá depois se DB tiver dados)
+                companyNameInput.value = '';
+                emailInput.value = '';
+
+                // tenta pegar e-mail do user salvo localmente (login)
+                const u = localUser();
+                const candidateEmail = u && u.email ? normalizeEmail(u.email) : (localStorage.getItem(storageKey('email')) || '');
+                if (candidateEmail) emailInput.value = candidateEmail;
+
+                // sempre readonly por padrão
+                companyNameInput.setAttribute('readonly','');
+                emailInput.setAttribute('readonly','');
+
+                // se tivermos db e um e-mail, tentamos resolver id e carregar profile do DB
+                if (db && candidateEmail) {
+                    try{
+                        const resolved = await resolveIdByEmail(candidateEmail);
+                        if (resolved) {
+                            localStorage.setItem('pf_employer_id', resolved);
                         }
-                    }).catch(() => {
-                        // ignore
-                    }).finally(() => resolve());
-                } else {
-                    resolve();
-                }
-            });
-        }
+                        const idToUse = localStorage.getItem('pf_employer_id');
+                        if (idToUse) {
+                            // tenta ler profile salvo em perfil_empregador/<id>/profile
+                            const pSnap = await db.ref('perfil_empregador/' + idToUse + '/profile').once('value');
+                            if (pSnap.exists()) {
+                                const p = pSnap.val();
+                                if (p.companyName) companyNameInput.value = p.companyName;
+                                if (p.email) emailInput.value = normalizeEmail(p.email);
+                                return; // já carregou do DB, não usa fallback
+                            }
 
-        function loadContent(key) {
-            // primeiro tenta carregar do Realtime DB (por empresa/email)
-            try {
-                const path = dbKey() + '/sections/' + key;
-                db.ref(path).once('value').then(snap => {
-                    const val = snap.val();
-                    if (val && typeof val.text === 'string') {
-                        textarea.value = val.text;
-                    } else {
-                        const stored = localStorage.getItem(storageKey(key));
-                        textarea.value = stored !== null ? stored : (defaults[key] || '');
+                            // fallback: tenta ler dados básicos do nó empregadores/<id>
+                            const empSnap = await db.ref('empregadores/' + idToUse).once('value');
+                            if (empSnap.exists()) {
+                                const eVal = empSnap.val();
+                                if (eVal.companyName) companyNameInput.value = eVal.companyName;
+                                if (eVal.email) emailInput.value = normalizeEmail(eVal.email);
+                                return;
+                            }
+                        }
+                    }catch(err){
+                        console.warn('Erro ao carregar profile do DB:', err);
                     }
+                }
+
+                // fallback final: se nada no DB, preenche com localStorage.user ou placeholders
+                if (!companyNameInput.value) companyNameInput.value = u.companyName || u.username || localStorage.getItem(storageKey('companyName')) || '';
+                if (!emailInput.value) emailInput.value = localStorage.getItem(storageKey('email')) || (u.email || '');
+            }
+
+            // --- carregamento da seção (textarea) ---
+            async function loadContent(key){
+                // placeholder enquanto carrega
+                textarea.value = '';
+                try{
+                    if(db){
+                        const id = localStorage.getItem('pf_employer_id') || null;
+                        if(id){
+                            const snap = await db.ref('perfil_empregador/' + id + '/sections/' + key).once('value');
+                            const val = snap.val();
+                            // suporta ambos formatos: string ou { text: string }
+                            if(val !== null && typeof val !== 'undefined'){
+                                if(typeof val === 'string') textarea.value = val;
+                                else if(typeof val === 'object' && typeof val.text === 'string') textarea.value = val.text;
+                                else textarea.value = JSON.stringify(val);
+                                textarea.scrollTop = 0;
+                                textarea.setAttribute('readonly','');
+                                editing = false;
+                                customizeBtn.textContent = 'Costumizar';
+                                metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
+                                return;
+                            }
+
+                            // se não há seção gravada, tenta pegar algum campo do nó empregadores/<id>
+                            const cSnap = await db.ref('empregadores/' + id).once('value');
+                            if(cSnap.exists()){
+                                const cVal = cSnap.val();
+                                textarea.value = cVal.bio || cVal.companyDescription || localStorage.getItem(storageKey(key)) || defaults[key] || '';
+                                textarea.scrollTop = 0;
+                                textarea.setAttribute('readonly','');
+                                editing = false;
+                                customizeBtn.textContent = 'Costumizar';
+                                metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
+                                return;
+                            }
+                        }
+                    }
+
+                    // fallback local
+                    textarea.value = localStorage.getItem(storageKey(key)) || defaults[key] || '';
+                }catch(err){
+                    console.warn('Erro ao carregar seção do DB, usando local:', err);
+                    textarea.value = localStorage.getItem(storageKey(key)) || defaults[key] || '';
+                } finally {
                     textarea.scrollTop = 0;
-                }).catch(() => {
-                    // se falhar (ex: offline), usa localStorage/defaults
-                    const stored = localStorage.getItem(storageKey(key));
-                    textarea.value = stored !== null ? stored : (defaults[key] || '');
-                    textarea.scrollTop = 0;
-                }).finally(() => {
-                    textarea.setAttribute('readonly', '');
+                    textarea.setAttribute('readonly','');
                     editing = false;
                     customizeBtn.textContent = 'Costumizar';
                     metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
-                    companyNameInput.setAttribute('readonly', '');
-                    emailInput.setAttribute('readonly', '');
-                });
-            } catch (e) {
-                const stored = localStorage.getItem(storageKey(key));
-                textarea.value = stored !== null ? stored : (defaults[key] || '');
-                textarea.scrollTop = 0;
-                textarea.setAttribute('readonly', '');
-                editing = false;
-                customizeBtn.textContent = 'Costumizar';
-                metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.';
-                companyNameInput.setAttribute('readonly', '');
-                emailInput.setAttribute('readonly', '');
-            }
-        }
-
-        function saveContent(key) {
-            localStorage.setItem(storageKey(key), textarea.value);
-            // grava também no Realtime DB
-            try {
-                const path = dbKey() + '/sections/' + key;
-                db.ref(path).set({ text: textarea.value, updatedAt: Date.now() });
-            } catch (e) {
-                console.warn('Não foi possível salvar no Firebase:', e);
-            }
-        }
-
-        function saveProfileInfo() {
-            localStorage.setItem(storageKey('companyName'), companyNameInput.value);
-            localStorage.setItem(storageKey('email'), emailInput.value);
-            try {
-                const existing = JSON.parse(localStorage.getItem('user') || '{}');
-                existing.companyName = companyNameInput.value;
-                existing.email = emailInput.value;
-                localStorage.setItem('user', JSON.stringify(existing));
-            } catch {
-                localStorage.setItem('user', JSON.stringify({ companyName: companyNameInput.value, email: emailInput.value }));
-            }
-            // grava perfil no Firebase
-            try {
-                const path = dbKey() + '/profile';
-                db.ref(path).set({ companyName: companyNameInput.value, email: emailInput.value, updatedAt: Date.now() });
-                // grava mapeamento email -> employer id para permitir login em outros dispositivos
-                try {
-                    const email = (emailInput.value || '').trim();
-                    if (email) {
-                        const mapPath = 'users_by_email/' + encodeURIComponent(email);
-                        db.ref(mapPath).set(getOrCreateEmployerId());
-                    }
-                } catch (e) {
-                    // ignore
+                    companyNameInput.setAttribute('readonly','');
+                    emailInput.setAttribute('readonly','');
                 }
-            } catch (e) {
-                console.warn('Não foi possível salvar perfil no Firebase:', e);
             }
-        }
 
-    // init (aguarda possível mapeamento por e-mail antes de carregar o conteúdo)
-    loadProfileInfo().then(() => loadContent(currentKey));
+            async function saveProfileInfo(){
+                // salva local
+                localStorage.setItem(storageKey('companyName'), companyNameInput.value);
+                localStorage.setItem(storageKey('email'), emailInput.value);
+                try{
+                    const existing = JSON.parse(localStorage.getItem('user')||'{}');
+                    existing.companyName = companyNameInput.value;
+                    existing.email = emailInput.value;
+                    localStorage.setItem('user', JSON.stringify(existing));
+                }catch(e){
+                    localStorage.setItem('user', JSON.stringify({ companyName: companyNameInput.value, email: emailInput.value }));
+                }
 
-        // tabs
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                currentKey = tab.dataset.key;
-                loadContent(currentKey);
+                // salva no DB
+                try{
+                    const email = normalizeEmail(emailInput.value);
+                    let id = localStorage.getItem('pf_employer_id') || null;
+                    if(email && db){
+                        const resolved = await resolveIdByEmail(email);
+                        if(resolved) id = resolved;
+                    }
+                    if(!id) id = getOrCreateEmployerId();
+                    localStorage.setItem('pf_employer_id', id);
+
+                    if(db){
+                        await db.ref('perfil_empregador/' + id + '/profile').set({ companyName: companyNameInput.value, email: email, updatedAt: Date.now() });
+                        if(email) await db.ref('users_by_email/' + encodeURIComponent(email)).set(id);
+                        await db.ref('perfil_empregador/' + id + '/sections/' + currentKey).set({ text: textarea.value, updatedAt: Date.now() });
+                    }
+                }catch(err){
+                    console.warn('Erro ao salvar no DB:', err);
+                }
+            }
+
+            function saveContentLocal(key){
+                localStorage.setItem(storageKey(key), textarea.value);
+            }
+
+            // UI
+            tabs.forEach(tab=>{
+                tab.addEventListener('click', async ()=>{
+                    tabs.forEach(t=>t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentKey = tab.dataset.key;
+                    await loadContent(currentKey);
+                });
             });
-        });
 
-        // customizar / salvar
-        customizeBtn.addEventListener('click', () => {
-            if (!editing) {
-                textarea.removeAttribute('readonly');
-                companyNameInput.removeAttribute('readonly');
-                emailInput.removeAttribute('readonly');
-                textarea.focus();
-                customizeBtn.textContent = 'Salvar';
-                metaNote.textContent = 'Edição habilitada — clique em Salvar para guardar as mudanças.';
-                editing = true;
-            } else {
-                textarea.setAttribute('readonly', '');
-                companyNameInput.setAttribute('readonly', '');
-                emailInput.setAttribute('readonly', '');
-                saveContent(currentKey);
-                saveProfileInfo();
-                customizeBtn.textContent = 'Costumizar';
-                metaNote.textContent = 'Alterações salvas.';
-                editing = false;
-                setTimeout(()=>{ metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 1800);
-            }
-        });
+            customizeBtn.addEventListener('click', async ()=>{
+                if(!editing){
+                    textarea.removeAttribute('readonly');
+                    companyNameInput.removeAttribute('readonly');
+                    emailInput.removeAttribute('readonly');
+                    textarea.focus();
+                    customizeBtn.textContent = 'Salvar';
+                    metaNote.textContent = 'Edição habilitada — clique em Salvar para guardar as mudanças.';
+                    editing = true;
+                } else {
+                    textarea.setAttribute('readonly','');
+                    companyNameInput.setAttribute('readonly','');
+                    emailInput.setAttribute('readonly','');
+                    saveContentLocal(currentKey);
+                    await saveProfileInfo();
+                    customizeBtn.textContent = 'Costumizar';
+                    metaNote.textContent = 'Alterações salvas.';
+                    editing = false;
+                    setTimeout(()=>{ metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 1800);
+                }
+            });
 
-        // Ctrl+S salva quando em edição
-        window.addEventListener('keydown', (e) => {
-            if (editing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-                e.preventDefault();
-                textarea.setAttribute('readonly', '');
-                companyNameInput.setAttribute('readonly', '');
-                emailInput.setAttribute('readonly', '');
-                saveContent(currentKey);
-                saveProfileInfo();
-                customizeBtn.textContent = 'Costumizar';
-                metaNote.textContent = 'Alterações salvas (atalho).';
-                editing = false;
-                setTimeout(()=>{ metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 1800);
-            }
-        });
+            window.addEventListener('keydown', async (e)=>{
+                if(editing && (e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){
+                    e.preventDefault();
+                    textarea.setAttribute('readonly','');
+                    companyNameInput.setAttribute('readonly','');
+                    emailInput.setAttribute('readonly','');
+                    saveContentLocal(currentKey);
+                    await saveProfileInfo();
+                    customizeBtn.textContent = 'Costumizar';
+                    metaNote.textContent = 'Alterações salvas (atalho).';
+                    editing = false;
+                    setTimeout(()=>{ metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 1800);
+                }
+            });
+
+            // init: resolve id primeiro, then profile then section
+            (async function init(){
+                try{ await loadProfileInfo(); }catch(e){ console.warn(e); }
+                try{ await loadContent(currentKey); }catch(e){ console.warn(e); }
+            })();
+
+        })();
     </script>
 </body>
 </html>
