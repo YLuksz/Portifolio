@@ -271,7 +271,7 @@
             }
         }
 
-        function saveProfileInfo() {
+        async function saveProfileInfo() {
             localStorage.setItem(storageKey('nome'), nameInput.value);
             localStorage.setItem(storageKey('email'), emailInput.value);
             // também atualiza the generic 'user' localStorage (preserve structure)
@@ -283,19 +283,46 @@
             } catch {
                 localStorage.setItem('user', JSON.stringify({ username: nameInput.value, email: emailInput.value }));
             }
-            // grava perfil no Firebase
+
+            // grava perfil no Firebase (perfil_candidato/<id> e candidatos/<key>)
+            if (typeof db === 'undefined') return;
             try {
-                const path = dbKey() + '/profile';
-                db.ref(path).set({ name: nameInput.value, email: emailInput.value, updatedAt: Date.now() });
-                // também grava um mapeamento email -> candidate id para facilitar login em outros dispositivos
-                try {
-                    const email = (emailInput.value || '').trim();
-                    if (email) {
-                        const mapPath = 'users_by_email/' + encodeURIComponent(email);
-                        db.ref(mapPath).set(getOrCreateCandidateId());
-                    }
-                } catch (e) {
-                    /* ignore */
+                const email = (emailInput.value || '').trim().toLowerCase();
+                // resolve or create id for perfil_candidato
+                let id = localStorage.getItem('pf_candidate_id') || null;
+                if (email) {
+                    const resolved = await resolveIdByEmail(email).catch(() => null);
+                    if (resolved) id = resolved;
+                }
+                if (!id) id = getOrCreateCandidateId();
+                localStorage.setItem('pf_candidate_id', id);
+
+                // grava profile
+                const profilePath = 'perfil_candidato/' + id + '/profile';
+                await db.ref(profilePath).set({ name: nameInput.value, email: email, updatedAt: Date.now() });
+
+                // grava seção atual como backup
+                await db.ref('perfil_candidato/' + id + '/sections/' + currentKey).set({ text: textarea.value, updatedAt: Date.now() });
+
+                // garante defaults
+                try { await ensureDefaultsInDB(id); } catch (err) { console.warn('Erro ao garantir defaults após salvar:', err); }
+
+                // garante nó em 'candidatos' (usado pelo fluxo de login)
+                let candidatoKey = null;
+                const cSnap = await db.ref('candidatos').orderByChild('email').equalTo(email).once('value');
+                cSnap.forEach(child => {
+                    candidatoKey = child.key;
+                    child.ref.update({ username: nameInput.value, email: email, bio: textarea.value || '' });
+                });
+                if (!candidatoKey) {
+                    const newRef = await db.ref('candidatos').push({ username: nameInput.value, email: email, bio: textarea.value || '' });
+                    candidatoKey = newRef.key;
+                }
+
+                // mapeia email -> candidatoKey e email -> perfil_candidato id
+                if (email) {
+                    await db.ref('users_by_email/' + encodeURIComponent(email)).set(candidatoKey || id);
+                    await db.ref('users_profile_map/' + encodeURIComponent(email)).set(id);
                 }
             } catch (e) {
                 console.warn('Não foi possível salvar perfil no Firebase:', e);
@@ -333,11 +360,13 @@
                 nameInput.setAttribute('readonly', '');
                 emailInput.setAttribute('readonly', '');
                 saveContent(currentKey);
-                saveProfileInfo();
-                customizeBtn.textContent = 'Costumizar';
-                metaNote.textContent = 'Alterações salvas.';
-                editing = false;
-                setTimeout(() => { metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 2000);
+                (async () => {
+                    await saveProfileInfo();
+                    customizeBtn.textContent = 'Costumizar';
+                    metaNote.textContent = 'Alterações salvas.';
+                    editing = false;
+                    setTimeout(() => { metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 2000);
+                })();
             }
         });
 
@@ -349,11 +378,13 @@
                 nameInput.setAttribute('readonly', '');
                 emailInput.setAttribute('readonly', '');
                 saveContent(currentKey);
-                saveProfileInfo();
-                customizeBtn.textContent = 'Costumizar';
-                metaNote.textContent = 'Alterações salvas (atalho).';
-                editing = false;
-                setTimeout(() => { metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 2000);
+                (async () => {
+                    await saveProfileInfo();
+                    customizeBtn.textContent = 'Costumizar';
+                    metaNote.textContent = 'Alterações salvas (atalho).';
+                    editing = false;
+                    setTimeout(() => { metaNote.textContent = 'Clique em "Costumizar" para editar esta seção.'; }, 1800);
+                })();
             }
         });
     </script>
